@@ -32,7 +32,7 @@ namespace ComputeShader3d
         /// <summary>
         /// The width, height, and depth of the compute texture's output.
         /// </summary>
-        private const uint OutputTextureSize = 256;
+        private const uint OutputTextureSize = 32;
 
         /// <summary>
         /// The value we're going to fill the texture with.
@@ -160,16 +160,16 @@ namespace ComputeShader3d
                         if (!fillValue.Equals(actual))
                         {
                             // Don't spam too much.
-                            int spamLimit = 5;
-                            if (notFilledCount < spamLimit)
-                            {
-                                Console.WriteLine($"({x}, {y}, {depth}) was {actual} instead of {fillValue}");
-                            }
+                            //int spamLimit = 5;
+                            //if (notFilledCount < spamLimit)
+                            //{
+                            //    Console.WriteLine($"({x}, {y}, {depth}) was {actual} instead of {fillValue}");
+                            //}
 
-                            if (notFilledCount == spamLimit)
-                            {
-                                Console.WriteLine("\t...and even more...");
-                            }
+                            //if (notFilledCount == spamLimit)
+                            //{
+                            //    Console.WriteLine("\t...and even more...");
+                            //}
 
                             notFilledCount++;
                         }
