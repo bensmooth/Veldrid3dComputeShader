@@ -14,5 +14,11 @@ void main()
 {
     ivec2 textureCoordinate = ivec2(gl_GlobalInvocationID.xy);
     vec4 dataToStore = vec4(FillValue);
+
+    if (textureCoordinate.x % 17 == 0)
+    {
+        dataToStore /= 2;
+    }
+
     imageStore(TextureToFill, textureCoordinate, dataToStore);
 }

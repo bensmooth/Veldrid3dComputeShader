@@ -86,7 +86,7 @@ namespace ComputeShader3d
 
             cl.UpdateBuffer(fillValueBuffer, 0, new FillValueStruct(FillValue));
 
-            // Actually use our compute shader to fill the texture.
+            // Use the compute shader to fill the texture.
             cl.SetPipeline(computePipeline);
             cl.SetComputeResourceSet(0, computeResourceSet);
             const uint GroupDivisorXY = 16;
@@ -96,7 +96,96 @@ namespace ComputeShader3d
             graphicsDevice.SubmitCommands(cl);
             graphicsDevice.WaitForIdle();
 
-            // TODO: Read back from our texture and make sure it has been properly filled.
+            // Read back from our texture and make sure it has been properly filled.
+            var expectedFillValue = new RgbaFloat(FillValue, FillValue, FillValue, FillValue);
+            for (uint depth = 0; depth < computeTargetTexture.Depth; depth++)
+            {
+                int notFilledCount = CountTexelsNotFilledAtDepth(graphicsDevice, computeTargetTexture, expectedFillValue, depth);
+
+                if (notFilledCount == 0)
+                {
+                    // Expected behavior:
+                    Console.WriteLine($"All texels were properly set at depth {depth}");
+                }
+                else
+                {
+                    // Unexpected behavior:
+                    uint totalTexels = computeTargetTexture.Width * computeTargetTexture.Height * computeTargetTexture.Depth;
+                    Console.WriteLine($"{notFilledCount} of {totalTexels} texels were not properly set at depth {depth}");
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+
+        /// <summary>
+        /// Returns the number of texels in the texture that DO NOT match the fill value.
+        /// </summary>
+        public static int CountTexelsNotFilledAtDepth<T>(GraphicsDevice device, Texture texture, T fillValue, uint depth)
+            where T : struct
+        {
+            ResourceFactory factory = device.ResourceFactory;
+
+            // We need to create a staging texture and copy into it.
+            TextureDescription description = new TextureDescription(texture.Width, texture.Height, depth: 1,
+                texture.MipLevels, texture.ArrayLayers,
+                texture.Format, TextureUsage.Staging,
+                texture.Type, texture.SampleCount);
+
+            Texture staging = factory.CreateTexture(ref description);
+
+            using CommandList cl = factory.CreateCommandList();
+            cl.Begin();
+
+            cl.CopyTexture(texture,
+                srcX: 0, srcY: 0, srcZ: depth,
+                srcMipLevel: 0, srcBaseArrayLayer: 0,
+                staging,
+                dstX: 0, dstY: 0, dstZ: 0,
+                dstMipLevel: 0, dstBaseArrayLayer: 0,
+                staging.Width, staging.Height,
+                depth: 1, layerCount: 1);
+
+            cl.End();
+            device.SubmitCommands(cl);
+            device.WaitForIdle();
+
+            try
+            {
+                MappedResourceView<T> mapped = device.Map<T>(staging, MapMode.Read);
+
+                int notFilledCount = 0;
+                for (int y = 0; y < staging.Height; y++)
+                {
+                    for (int x = 0; x < staging.Width; x++)
+                    {
+                        T actual = mapped[x, y];
+                        if (!fillValue.Equals(actual))
+                        {
+                            // Don't spam too much.
+                            int spamLimit = 5;
+                            if (notFilledCount < spamLimit)
+                            {
+                                Console.WriteLine($"({x}, {y}, {depth}) was {actual} instead of {fillValue}");
+                            }
+
+                            if (notFilledCount == spamLimit)
+                            {
+                                Console.WriteLine("\t...and even more...");
+                            }
+
+                            notFilledCount++;
+                        }
+                    }
+                }
+
+                return notFilledCount;
+            }
+            finally
+            {
+                device.Unmap(staging);
+            }
         }
 
 
