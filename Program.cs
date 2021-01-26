@@ -5,6 +5,7 @@ using Veldrid;
 using Veldrid.SPIRV;
 
 
+// Intended to demonstrate filling a 3D texture with a compute shader, and then reading it back to ensure it was properly filled.
 namespace ComputeShader3d
 {
     struct FillValueStruct
@@ -21,6 +22,8 @@ namespace ComputeShader3d
             FillValue = fillValue;
             pad1 = pad2 = pad3 = 0;
         }
+
+        public static uint Size => (uint)Marshal.SizeOf<FillValueStruct>();
     }
 
 
@@ -46,9 +49,8 @@ namespace ComputeShader3d
 
         static void Main(GraphicsBackend backend)
         {
-            Console.WriteLine($"Using backend: {backend}");
-
             using GraphicsDevice graphicsDevice = CreateDevice(backend);
+            Console.WriteLine($"Using backend: {graphicsDevice.BackendType}");
 
             ResourceFactory factory = graphicsDevice.ResourceFactory;
 
@@ -58,10 +60,9 @@ namespace ComputeShader3d
                 shaderBytes,
                 "main"));
 
-            using var computeLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
-                new ResourceLayoutElementDescription("Tex", ResourceKind.TextureReadWrite, ShaderStages.Compute),
-                new ResourceLayoutElementDescription("ScreenSizeBuffer", ResourceKind.UniformBuffer, ShaderStages.Compute),
-                new ResourceLayoutElementDescription("ShiftBuffer", ResourceKind.UniformBuffer, ShaderStages.Compute)));
+            using ResourceLayout computeLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
+                new ResourceLayoutElementDescription("TextureToFill", ResourceKind.TextureReadWrite, ShaderStages.Compute),
+                new ResourceLayoutElementDescription("FillValueBuffer", ResourceKind.UniformBuffer, ShaderStages.Compute)));
 
             ComputePipelineDescription computePipelineDesc = new ComputePipelineDescription(
                 computeShader,
@@ -70,7 +71,22 @@ namespace ComputeShader3d
 
             using Pipeline computePipeline = factory.CreateComputePipeline(ref computePipelineDesc);
 
-            using DeviceBuffer fillValueBuffer = factory.CreateBuffer(new BufferDescription((uint)Marshal.SizeOf<FillValueStruct>(), BufferUsage.UniformBuffer));
+            if (FillValueStruct.Size != 16)
+            {
+                throw new Exception($"Expected uniform to be 16 bytes instead of {FillValueStruct.Size}!");
+            }
+
+            using DeviceBuffer fillValueBuffer = factory.CreateBuffer(new BufferDescription(FillValueStruct.Size, BufferUsage.UniformBuffer));
+            FillValueStruct fillValue = new FillValueStruct(42.42f);
+
+            using CommandList cl = factory.CreateCommandList();
+            cl.Begin();
+            cl.UpdateBuffer(fillValueBuffer, 0, fillValue);
+
+            // TODO: Actually use our compute shader to fill the texture.
+            cl.SetPipeline(computePipeline);
+
+            cl.End();
         }
     }
 }
