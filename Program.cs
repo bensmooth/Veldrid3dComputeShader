@@ -56,20 +56,18 @@ namespace ComputeShader3d
                 new ResourceLayoutElementDescription("TextureToFill", ResourceKind.TextureReadWrite, ShaderStages.Compute),
                 new ResourceLayoutElementDescription("FillValueBuffer", ResourceKind.UniformBuffer, ShaderStages.Compute)));
 
-            ComputePipelineDescription computePipelineDesc = new ComputePipelineDescription(
+            using Pipeline computePipeline = factory.CreateComputePipeline(new ComputePipelineDescription(
                 computeShader,
                 computeLayout,
-                16, 16, 1);
-
-            using Pipeline computePipeline = factory.CreateComputePipeline(ref computePipelineDesc);
+                16, 16, 1));
 
             using DeviceBuffer fillValueBuffer = factory.CreateBuffer(new BufferDescription(FillValueStruct.Size, BufferUsage.UniformBuffer));
 
             // Create our output texture.
-            using Texture computeTargetTexture = factory.CreateTexture(TextureDescription.Texture2D(
+            using Texture computeTargetTexture = factory.CreateTexture(TextureDescription.Texture3D(
                 OutputTextureSize,
                 OutputTextureSize,
-                1,
+                OutputTextureSize,
                 1,
                 PixelFormat.R32_G32_B32_A32_Float,
                 TextureUsage.Sampled | TextureUsage.Storage));
@@ -90,7 +88,7 @@ namespace ComputeShader3d
             cl.SetPipeline(computePipeline);
             cl.SetComputeResourceSet(0, computeResourceSet);
             const uint GroupDivisorXY = 16;
-            cl.Dispatch(OutputTextureSize / GroupDivisorXY, OutputTextureSize / GroupDivisorXY, groupCountZ: 1);
+            cl.Dispatch(OutputTextureSize / GroupDivisorXY, OutputTextureSize / GroupDivisorXY, OutputTextureSize);
 
             cl.End();
             graphicsDevice.SubmitCommands(cl);
@@ -110,11 +108,9 @@ namespace ComputeShader3d
                 else
                 {
                     // Unexpected behavior:
-                    uint totalTexels = computeTargetTexture.Width * computeTargetTexture.Height * computeTargetTexture.Depth;
+                    uint totalTexels = computeTargetTexture.Width * computeTargetTexture.Height;
                     Console.WriteLine($"{notFilledCount} of {totalTexels} texels were not properly set at depth {depth}");
                 }
-
-                Console.WriteLine();
             }
         }
 

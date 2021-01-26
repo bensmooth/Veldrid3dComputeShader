@@ -1,6 +1,6 @@
 #version 450
 
-layout(set = 0, binding = 0, rgba32f) uniform image2D TextureToFill;
+layout(set = 0, binding = 0, rgba32f) uniform image3D TextureToFill;
 
 layout(set = 0, binding = 1) uniform FillValueBuffer
 {
@@ -12,13 +12,8 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 void main()
 {
-    ivec2 textureCoordinate = ivec2(gl_GlobalInvocationID.xy);
+    ivec3 textureCoordinate = ivec3(gl_GlobalInvocationID.xyz);
     vec4 dataToStore = vec4(FillValue);
-
-    if (textureCoordinate.x % 17 == 0)
-    {
-        dataToStore /= 2;
-    }
 
     imageStore(TextureToFill, textureCoordinate, dataToStore);
 }
