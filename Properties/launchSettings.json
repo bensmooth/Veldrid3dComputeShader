@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ComputeShader3d": {
+      "commandName": "Project",
+      "commandLineArgs": "--backend Vulkan"
+    }
+  }
+}
