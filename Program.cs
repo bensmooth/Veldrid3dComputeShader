@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Veldrid;
 using Veldrid.SPIRV;
@@ -32,18 +33,49 @@ namespace ComputeShader3d
         /// <summary>
         /// The width, height, and depth of the compute texture's output.
         /// </summary>
-        private const uint OutputTextureSize = 32;
+        private const uint OutputTextureSize = 16;
 
         /// <summary>
-        /// The value we're going to fill the texture with.
+        /// The value we're going to fill the texture with, multiplied by the current depth.
         /// </summary>
-        private const float FillValue = 42.42f;
+        private const float FillValue = 1f / OutputTextureSize;
 
 
-        static void Main(GraphicsBackend backend)
+        /// <summary>
+        /// Runs the test.
+        /// </summary>
+        /// <param name="backend">The rendering backend to use.</param>
+        /// <param name="capture">Set to true to capture with RenderDoc.</param>
+        static void Main(GraphicsBackend backend, bool capture)
         {
+            RenderDoc renderDoc = null;
+
+            if (capture)
+            {
+                RenderDoc.Load(out renderDoc);
+
+                renderDoc.APIValidation = true;
+                renderDoc.CaptureAllCmdLists = true;
+                renderDoc.RefAllResources = true;
+                renderDoc.VerifyBufferAccess = true;
+
+                renderDoc.SetCaptureSavePath(backend.ToString());
+            }
+
             using GraphicsDevice graphicsDevice = CreateDevice(backend);
             Console.WriteLine($"Using backend: {graphicsDevice.BackendType}");
+
+            renderDoc?.StartFrameCapture();
+
+            Test(graphicsDevice);
+            renderDoc?.EndFrameCapture();
+
+            renderDoc?.LaunchReplayUI(Path.Combine(Directory.GetCurrentDirectory(), $"{backend}_capture.rdc"));
+        }
+
+
+        private static void Test(GraphicsDevice graphicsDevice)
+        {
             ResourceFactory factory = graphicsDevice.ResourceFactory;
 
             byte[] shaderBytes = File.ReadAllBytes("FillComputeShader.comp");
@@ -95,9 +127,9 @@ namespace ComputeShader3d
             graphicsDevice.WaitForIdle();
 
             // Read back from our texture and make sure it has been properly filled.
-            var expectedFillValue = new RgbaFloat(FillValue, FillValue, FillValue, FillValue);
             for (uint depth = 0; depth < computeTargetTexture.Depth; depth++)
             {
+                RgbaFloat expectedFillValue = new RgbaFloat(new Vector4(FillValue * (depth + 1)));
                 int notFilledCount = CountTexelsNotFilledAtDepth(graphicsDevice, computeTargetTexture, expectedFillValue, depth);
 
                 if (notFilledCount == 0)

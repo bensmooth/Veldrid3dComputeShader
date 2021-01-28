@@ -5,16 +5,18 @@ layout(set = 0, binding = 0, rgba32f) uniform image3D TextureToFill;
 layout(set = 0, binding = 1) uniform FillValueBuffer
 {
     float FillValue;
-    vec3 Padding_;
+    float Padding1;
+    float Padding2;
+    float Padding3;
 };
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-// Just a dumb compute shader that fills a 3D texture with the same value from a uniform.
+// Just a dumb compute shader that fills a 3D texture with the same value from a uniform times the current depth.
 void main()
 {
     ivec3 textureCoordinate = ivec3(gl_GlobalInvocationID.xyz);
-    vec4 dataToStore = vec4(FillValue);
+    float dataToStore = FillValue * (textureCoordinate.z + 1);
 
-    imageStore(TextureToFill, textureCoordinate, dataToStore);
+    imageStore(TextureToFill, textureCoordinate, vec4(dataToStore));
 }
