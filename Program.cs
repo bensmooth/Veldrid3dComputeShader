@@ -3,7 +3,9 @@ using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Veldrid;
+using Veldrid.Sdl2;
 using Veldrid.SPIRV;
+using Veldrid.StartupUtilities;
 
 
 // Intended to demonstrate filling a 3D texture with a compute shader, and then reading it back to ensure it was properly filled.
@@ -150,7 +152,7 @@ namespace ComputeShader3d
         /// <summary>
         /// Returns the number of texels in the texture that DO NOT match the fill value.
         /// </summary>
-        public static int CountTexelsNotFilledAtDepth<T>(GraphicsDevice device, Texture texture, T fillValue, uint depth)
+        public unsafe static int CountTexelsNotFilledAtDepth<T>(GraphicsDevice device, Texture texture, T fillValue, uint depth)
             where T : struct
         {
             ResourceFactory factory = device.ResourceFactory;
@@ -183,12 +185,22 @@ namespace ComputeShader3d
             {
                 MappedResourceView<T> mapped = device.Map<T>(staging, MapMode.Read);
 
+                //int sizeOfT = Marshal.SizeOf<T>();
+                //Span<byte> byteSpan = new Span<byte>(mapped.MappedResource.Data.ToPointer(), (int)mapped.MappedResource.SizeInBytes);
+                //int rowLengthBytes = (int)(sizeOfT * staging.Width);
+
                 int notFilledCount = 0;
                 for (int y = 0; y < staging.Height; y++)
                 {
+                    //int rowOffset = (int)(mapped.MappedResource.RowPitch * y);
+                    //Span<byte> currentRowBytes = byteSpan.Slice(rowOffset, rowLengthBytes);
+                    //Span<T> currentRowSpan = MemoryMarshal.Cast<byte, T>(currentRowBytes);
+
                     for (int x = 0; x < staging.Width; x++)
                     {
                         T actual = mapped[x, y];
+                        //T actualFromSpan = currentRowSpan[x];
+
                         if (!fillValue.Equals(actual))
                         {
                             // Don't spam too much.
@@ -229,6 +241,18 @@ namespace ComputeShader3d
                     return GraphicsDevice.CreateVulkan(options);
                 case GraphicsBackend.Metal:
                     return GraphicsDevice.CreateMetal(options);
+                case GraphicsBackend.OpenGL:
+                    WindowCreateInfo windowCI = new WindowCreateInfo()
+                    {
+                        X = 100,
+                        Y = 100,
+                        WindowWidth = 100,
+                        WindowHeight = 100,
+                        WindowTitle = "OGL test"
+                    };
+
+                    Sdl2Window window = VeldridStartup.CreateWindow(ref windowCI);
+                    return VeldridStartup.CreateDefaultOpenGLGraphicsDevice(options, window, GraphicsBackend.OpenGL);
                 default:
                     throw new Exception($"Unsupported backend '{backend}'");
             }
