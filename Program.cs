@@ -60,6 +60,7 @@ namespace ComputeShader3d
                 renderDoc.CaptureAllCmdLists = true;
                 renderDoc.RefAllResources = true;
                 renderDoc.VerifyBufferAccess = true;
+                renderDoc.CaptureCallstacks = true;
 
                 renderDoc.SetCaptureSavePath(backend.ToString());
             }
