@@ -68,17 +68,16 @@ namespace ComputeShader3d
             using GraphicsDevice graphicsDevice = CreateDevice(backend);
             Console.WriteLine($"Using backend: {graphicsDevice.BackendType}");
 
-            renderDoc?.StartFrameCapture();
-
-            Test(graphicsDevice);
-            renderDoc?.EndFrameCapture();
+            Test(graphicsDevice, renderDoc);
 
             renderDoc?.LaunchReplayUI(Path.Combine(Directory.GetCurrentDirectory(), $"{backend}_capture.rdc"));
         }
 
 
-        private static void Test(GraphicsDevice graphicsDevice)
+        private static void Test(GraphicsDevice graphicsDevice, RenderDoc renderDoc)
         {
+            renderDoc?.StartFrameCapture();
+
             ResourceFactory factory = graphicsDevice.ResourceFactory;
 
             byte[] shaderBytes = File.ReadAllBytes("FillComputeShader.comp");
@@ -128,6 +127,8 @@ namespace ComputeShader3d
             cl.End();
             graphicsDevice.SubmitCommands(cl);
             graphicsDevice.WaitForIdle();
+
+            renderDoc?.EndFrameCapture();
 
             // Read back from our texture and make sure it has been properly filled.
             for (uint depth = 0; depth < computeTargetTexture.Depth; depth++)
